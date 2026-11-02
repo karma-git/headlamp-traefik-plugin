@@ -1,15 +1,41 @@
 # headlamp-traefik-plugin
 
-This is the default template README for [Headlamp Plugins](https://github.com/kubernetes-sigs/headlamp).
+[Headlamp](https://headlamp.dev) plugin for [Traefik](https://traefik.io) running in Kubernetes with the `kubernetes-crd` provider.
 
-- The description of your plugin should go here.
-- You should also edit the package.json file meta data (like name and description).
+## Features
 
-## Developing Headlamp plugins
+- **Overview**: RPS, 5xx error rate, open connections, config reloads and a per-service table (backend status, RPS, errors, p95), color-coded. Data comes from the Prometheus `/metrics` endpoint and the Traefik API, both read through the Kubernetes API server pod proxy, so no port-forward is needed.
+- **Configuration**: all `IngressRoute` rules of a Traefik instance with prettified, highlighted rules (`Host`, `Method`, `Path*`), search by path (substring or a concrete path such as `/api/v1/me`) and links to the `IngressRoute`, `Middleware`, `TraefikService` and `Service` objects.
+- Instance selector: instances are discovered from pods labeled `app.kubernetes.io/name=traefik` and grouped by `app.kubernetes.io/instance`; routes are matched by the `kubernetes.io/ingress.class` annotation.
 
-For more information on developing Headlamp plugins, please refer to:
+## Requirements
 
-- [Getting Started](https://headlamp.dev/docs/latest/development/plugins/), How to create a new Headlamp plugin.
-- [API Reference](https://headlamp.dev/docs/latest/development/api/), API documentation for what you can do
-- [UI Component Storybook](https://headlamp.dev/docs/latest/development/frontend/#storybook), pre-existing components you can use when creating your plugin.
-- [Plugin Examples](https://github.com/kubernetes-sigs/headlamp/tree/main/plugins/examples), Example plugins you can look at to see how it's done.
+- Traefik with the Prometheus metrics entrypoint on port `8090` and the API on port `9000`, deployed in the `traefik` namespace.
+- Permission to `get`/`list` pods, `ingressroutes.traefik.io`, and to use `pods/proxy`.
+
+## Install
+
+From a release: download `headlamp-traefik-plugin-<version>.tar.gz` and extract it into the Headlamp plugins directory (on macOS `~/Library/Application Support/Headlamp/plugins/`).
+
+## Development
+
+```
+npm install
+npm start      # watch mode, Headlamp picks the plugin up
+npm test
+npm run build
+```
+
+Headlamp Desktop loads every context from `KUBECONFIG`; with hundreds of contexts the plugin files may fail to load. Start it with a small kubeconfig instead:
+
+```
+/Applications/Headlamp.app/Contents/MacOS/Headlamp --kubeconfig ~/.kube/small.yaml
+```
+
+## Releasing
+
+Publish a GitHub release with a `vX.Y.Z` tag. The `release` workflow builds the plugin, attaches the tarball and updates `artifacthub-pkg.yml` on `main`.
+
+## License
+
+Apache-2.0

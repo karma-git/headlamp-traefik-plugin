@@ -1,9 +1,16 @@
 import { SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, Typography } from '@mui/material';
 import React from 'react';
-import { fetchMetricsText, fetchTraefikServices, TraefikApiService } from './api';
+import {
+  fetchMetricsText,
+  fetchTraefikServices,
+  listAllIngressRoutes,
+  NAMESPACE,
+  TraefikApiService,
+} from './api';
 import { backendColor, errorColor, latencyColor } from './colors';
 import { computeRates, parseMetrics, shortServiceName, Snapshot } from './metrics';
+import { RefLink } from './refs';
 import { InstanceSelect, useInstances } from './useInstance';
 
 const POLL_MS = 5000;
@@ -25,7 +32,14 @@ export default function Overview() {
   const [history, setHistory] = React.useState<Snapshot[]>([]);
   const [apiServices, setApiServices] = React.useState<Map<string, string[]>>(new Map());
   const [openConns, setOpenConns] = React.useState(0);
+  const [routeNames, setRouteNames] = React.useState<Set<string>>(new Set());
   const [error, setError] = React.useState('');
+
+  React.useEffect(() => {
+    listAllIngressRoutes()
+      .then(irs => setRouteNames(new Set(irs.map(ir => ir.metadata.name))))
+      .catch(() => setRouteNames(new Set()));
+  }, []);
   const pods = instances[instance];
 
   React.useEffect(() => {
@@ -108,7 +122,22 @@ export default function Overview() {
         data={rows}
         defaultSortingColumn={2}
         columns={[
-          { label: 'Service', getter: (r: any) => r.label },
+          {
+            label: 'Service',
+            getter: (r: any) => {
+              const irName = r.label.startsWith(`${NAMESPACE}-`)
+                ? r.label.slice(NAMESPACE.length + 1)
+                : '';
+              return routeNames.has(irName) ? (
+                <RefLink
+                  r={{ name: irName, namespace: NAMESPACE, label: r.label }}
+                  crd="ingressroutes.traefik.io"
+                />
+              ) : (
+                r.label
+              );
+            },
+          },
           {
             label: 'Backend',
             getter: (r: any) => (

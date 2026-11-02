@@ -19,6 +19,11 @@ export interface IngressRouteRule {
   services?: IngressRouteService[];
 }
 
+export interface Middleware {
+  metadata: { name: string; namespace: string };
+  spec: Record<string, any>;
+}
+
 export interface IngressRoute {
   metadata: { name: string; namespace: string; annotations?: Record<string, string> };
   spec: { entryPoints?: string[]; routes?: IngressRouteRule[] };
@@ -70,4 +75,20 @@ export async function fetchMetricsText(pod: string): Promise<string> {
 
 export async function fetchTraefikServices(pod: string): Promise<TraefikApiService[]> {
   return ApiProxy.request(podProxy(pod, API_PORT, '/api/http/services?per_page=1000'));
+}
+
+export async function listAllIngressRoutes(): Promise<IngressRoute[]> {
+  const res = await ApiProxy.request(
+    `/apis/traefik.io/v1alpha1/namespaces/${NAMESPACE}/ingressroutes`
+  );
+  return (res.items ?? []) as IngressRoute[];
+}
+
+export async function getTraefikObject(plural: string, namespace: string, name: string) {
+  return ApiProxy.request(`/apis/traefik.io/v1alpha1/namespaces/${namespace}/${plural}/${name}`);
+}
+
+export async function listTraefikObjects(plural: string): Promise<any[]> {
+  const res = await ApiProxy.request(`/apis/traefik.io/v1alpha1/namespaces/${NAMESPACE}/${plural}`);
+  return res.items ?? [];
 }

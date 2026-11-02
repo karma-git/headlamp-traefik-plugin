@@ -3,3 +3,4 @@ dist/
 .eslintcache
 *.tgz
 .DS_Store
+*.tar.gz

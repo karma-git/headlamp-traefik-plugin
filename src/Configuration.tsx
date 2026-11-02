@@ -1,17 +1,11 @@
-import { Link, SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
-import { Box, Chip, FormControlLabel, Switch, TextField, Typography } from '@mui/material';
+import { SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
+import { Box, FormControlLabel, Switch, TextField, Typography } from '@mui/material';
 import React from 'react';
 import { IngressRoute, listIngressRoutes } from './api';
+import { Ref, RefLink, ServiceRef } from './refs';
 import { pathMatches } from './ruleUtils';
 import RuleView from './RuleView';
 import { InstanceSelect, useInstances } from './useInstance';
-
-interface Ref {
-  name: string;
-  namespace: string;
-  kind?: string;
-  label: string;
-}
 
 interface Flow {
   route: Ref;
@@ -21,8 +15,6 @@ interface Flow {
   services: Ref[];
   priority?: number;
 }
-
-const external = (name: string) => name.includes('@');
 
 function toFlows(irs: IngressRoute[]): Flow[] {
   return irs.flatMap(ir => {
@@ -45,28 +37,6 @@ function toFlows(irs: IngressRoute[]): Flow[] {
       })),
     }));
   });
-}
-
-function RefLink(props: { r: Ref; crd?: string; chip?: boolean }) {
-  const { r, crd, chip } = props;
-  const link = external(r.name) ? (
-    r.label
-  ) : crd ? (
-    <Link routeName="customresource" params={{ crd, namespace: r.namespace, crName: r.name }}>
-      {r.label}
-    </Link>
-  ) : (
-    <Link routeName="service" params={{ namespace: r.namespace, name: r.name }}>
-      {r.label}
-    </Link>
-  );
-  return chip ? <Chip size="small" style={{ margin: 2 }} label={link} /> : <>{link}</>;
-}
-
-function ServiceRef({ r }: { r: Ref }) {
-  return (
-    <RefLink r={r} crd={r.kind === 'TraefikService' ? 'traefikservices.traefik.io' : undefined} />
-  );
 }
 
 export default function Configuration() {

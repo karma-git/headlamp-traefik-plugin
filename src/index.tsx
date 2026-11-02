@@ -1,5 +1,7 @@
 import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
 import Configuration from './Configuration';
+import { IngressRoutePage, MiddlewarePage, TraefikServicePage } from './Details';
+import { IngressRoutesList, MiddlewaresList, TraefikServicesList } from './List';
 import Overview from './Overview';
 
 registerSidebarEntry({
@@ -22,6 +24,26 @@ registerSidebarEntry({
   url: '/traefik/configuration',
 });
 
+for (const [slug, label, component] of [
+  ['ingressroutes', 'IngressRoutes', IngressRoutesList],
+  ['middlewares', 'Middlewares', MiddlewaresList],
+  ['traefikservices', 'TraefikServices', TraefikServicesList],
+] as const) {
+  registerSidebarEntry({
+    parent: 'traefik',
+    name: `traefik-${slug}`,
+    label,
+    url: `/traefik/${slug}`,
+  });
+  registerRoute({
+    path: `/traefik/${slug}`,
+    sidebar: `traefik-${slug}`,
+    name: `traefik-${slug}-list`,
+    exact: true,
+    component,
+  });
+}
+
 registerRoute({
   path: '/traefik/overview',
   sidebar: 'traefik-overview',
@@ -36,3 +58,17 @@ registerRoute({
   exact: true,
   component: Configuration,
 });
+
+for (const [path, name, component] of [
+  ['ingressroutes', 'traefik-ingressroute', IngressRoutePage],
+  ['middlewares', 'traefik-middleware', MiddlewarePage],
+  ['traefikservices', 'traefik-traefikservice', TraefikServicePage],
+] as const) {
+  registerRoute({
+    path: `/traefik/${path}/:namespace/:name`,
+    sidebar: `traefik-${path}`,
+    name,
+    exact: true,
+    component,
+  });
+}
