@@ -1,0 +1,5 @@
+node_modules/
+dist/
+.eslintcache
+*.tgz
+.DS_Store
