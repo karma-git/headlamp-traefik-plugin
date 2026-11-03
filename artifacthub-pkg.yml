@@ -2,17 +2,30 @@ version: 0.1.0
 name: headlamp-traefik-plugin
 displayName: Traefik
 createdAt: '2026-11-02T00:00:00Z'
-description: Traffic overview and routing configuration for Traefik (kubernetes-crd provider) in Headlamp.
+description: Live traffic overview and IngressRoute configuration for Traefik (kubernetes-crd provider) in Headlamp.
+logoURL: https://raw.githubusercontent.com/traefik/traefik/master/docs/content/assets/img/traefik.logo.png
 license: Apache-2.0
+homeURL: https://github.com/karma-git/headlamp-traefik-plugin
+category: networking
 keywords:
   - traefik
   - ingressroute
+  - ingress
   - kubernetes
   - headlamp
   - headlamp-plugin
 links:
   - name: Source
     url: https://github.com/karma-git/headlamp-traefik-plugin
+  - name: Issues
+    url: https://github.com/karma-git/headlamp-traefik-plugin/issues
+maintainers:
+  - name: Andrew Horbach
+    email: andrewhorbach@gmail.com
+install: |
+  Install from the Headlamp Plugin Catalog, or download the release tarball and extract it into
+  the Headlamp plugins directory. Configure the Traefik namespace and ports in
+  Settings → Plugins → headlamp-traefik-plugin.
 annotations:
   headlamp/plugin/archive-url: https://github.com/karma-git/headlamp-traefik-plugin/releases/download/v0.1.0/headlamp-traefik-plugin-0.1.0.tar.gz
   headlamp/plugin/archive-checksum: SHA256:TO_BE_FILLED_BY_RELEASE_WORKFLOW

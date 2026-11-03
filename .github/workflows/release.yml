@@ -13,7 +13,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: main
+          ref: ${{ github.event.release.tag_name }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -22,11 +22,14 @@ jobs:
         id: v
         run: |
           TAG="${{ github.event.release.tag_name }}"
+          case "$TAG" in v[0-9]*.[0-9]*.[0-9]*) ;; *) echo "Tag must look like vX.Y.Z, got $TAG"; exit 1;; esac
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
       - name: Align package.json version
         run: npm version "${{ steps.v.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm ci
+      - run: npm run tsc
+      - run: npm run lint
       - run: npm test
       - run: npm run build
       - run: npm run package
@@ -37,9 +40,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ steps.v.outputs.tag }}" "headlamp-traefik-plugin-${{ steps.v.outputs.version }}.tar.gz" --clobber
-      - name: Update artifacthub-pkg.yml
+      - name: Switch to main
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+      - name: Update metadata
         run: |
           V="${{ steps.v.outputs.version }}"
+          npm version "$V" --no-git-tag-version --allow-same-version
           sed -i -E \
             -e "s|^version: .*|version: $V|" \
             -e "s|^createdAt: .*|createdAt: '$(date -u +%Y-%m-%dT%H:%M:%SZ)'|" \
@@ -50,6 +58,6 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add artifacthub-pkg.yml package.json
+          git add artifacthub-pkg.yml package.json package-lock.json
           git diff --cached --quiet || git commit -m "chore: release ${{ steps.v.outputs.version }}"
           git push origin HEAD:main

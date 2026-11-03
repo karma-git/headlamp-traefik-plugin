@@ -7,7 +7,7 @@ import {
 import { Typography } from '@mui/material';
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import { getTraefikObject, IngressRoute, listAllIngressRoutes } from './api';
+import { getTraefikObject, ingressClass, IngressRoute, listAllIngressRoutes } from './api';
 import { Ref, RefLink, ServiceRef, serviceRef } from './refs';
 import RuleView from './RuleView';
 
@@ -31,7 +31,7 @@ export function IngressRouteDetails({ ir }: { ir: IngressRoute }) {
             getter: r =>
               (r.middlewares ?? []).map(m => (
                 <RefLink
-                  key={m.name}
+                  key={`${m.namespace ?? ns}/${m.name}`}
                   r={{ name: m.name, namespace: m.namespace ?? ns, label: m.name }}
                   crd="middlewares.traefik.io"
                   chip
@@ -76,8 +76,13 @@ export function MiddlewareDetails({ mw }: { mw: { metadata: any; spec: Record<st
       )
       .map(r => ({ ir, rule: r.match }))
   );
-  const irs = new Map<string, number>();
-  users.forEach(u => irs.set(u.ir.metadata.name, (irs.get(u.ir.metadata.name) ?? 0) + 1));
+  const irs = new Map<string, { ns: string; n: string; count: number }>();
+  for (const { ir } of users) {
+    const key = `${ir.metadata.namespace}/${ir.metadata.name}`;
+    const e = irs.get(key) ?? { ns: ir.metadata.namespace, n: ir.metadata.name, count: 0 };
+    e.count++;
+    irs.set(key, e);
+  }
 
   const [type, params] = Object.entries(mw.spec ?? {})[0] ?? ['-', {}];
   const rows =
@@ -94,13 +99,13 @@ export function MiddlewareDetails({ mw }: { mw: { metadata: any; spec: Record<st
         {error && <Typography color="error">{error}</Typography>}
         {routes === null && !error && <Typography>Loading…</Typography>}
         <SimpleTable
-          data={[...irs.entries()].map(([n, count]) => ({ n, count }))}
+          data={[...irs.values()]}
           columns={[
             {
               label: 'IngressRoute',
-              getter: (u: { n: string }) => (
+              getter: (u: { ns: string; n: string }) => (
                 <RefLink
-                  r={{ name: u.n, namespace, label: u.n } as Ref}
+                  r={{ name: u.n, namespace: u.ns, label: `${u.ns}/${u.n}` } as Ref}
                   crd="ingressroutes.traefik.io"
                 />
               ),
@@ -150,6 +155,7 @@ function ObjectPage(props: {
   const [error, setError] = React.useState('');
   React.useEffect(() => {
     setObj(null);
+    setError('');
     getTraefikObject(props.plural, namespace, name)
       .then(setObj)
       .catch(e => setError(String(e?.message ?? e)));
@@ -173,7 +179,7 @@ function ObjectPage(props: {
             { name: 'Namespace', value: namespace },
             {
               name: 'Ingress class',
-              value: obj?.metadata?.annotations?.['kubernetes.io/ingress.class'] ?? '-',
+              value: (obj && ingressClass(obj)) || '-',
               hide: props.plural !== 'ingressroutes',
             },
           ]}

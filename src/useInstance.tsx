@@ -1,21 +1,28 @@
 import { MenuItem, Select } from '@mui/material';
 import React from 'react';
 import { listInstances } from './api';
+import { useConfig } from './config';
 
 export function useInstances() {
   const [instances, setInstances] = React.useState<Record<string, string[]>>({});
   const [instance, setInstance] = React.useState<string>('');
   const [error, setError] = React.useState<string>('');
+  const { namespace } = useConfig();
   React.useEffect(() => {
+    setError('');
     listInstances()
       .then(res => {
         setInstances(res);
-        setInstance(
-          cur => cur || (res['traefik-external'] ? 'traefik-external' : Object.keys(res)[0] ?? '')
-        );
+        setInstance(cur => (res[cur] ? cur : Object.keys(res).sort()[0] ?? ''));
+        if (!Object.keys(res).length) {
+          setError(
+            `No running Traefik pods (app.kubernetes.io/name=traefik) in namespace "${namespace}". ` +
+              'Set the namespace in Settings → Plugins → headlamp-traefik-plugin.'
+          );
+        }
       })
       .catch(e => setError(String(e?.message ?? e)));
-  }, []);
+  }, [namespace]);
   return { instances, instance, setInstance, error };
 }
 

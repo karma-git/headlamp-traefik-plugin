@@ -5,12 +5,11 @@ import {
   fetchMetricsText,
   fetchTraefikServices,
   listAllIngressRoutes,
-  NAMESPACE,
   TraefikApiService,
 } from './api';
 import { backendColor, errorColor, latencyColor } from './colors';
 import { computeRates, parseMetrics, shortServiceName, Snapshot } from './metrics';
-import { RefLink } from './refs';
+import { Ref, RefLink } from './refs';
 import { InstanceSelect, useInstances } from './useInstance';
 
 const POLL_MS = 5000;
@@ -32,13 +31,23 @@ export default function Overview() {
   const [history, setHistory] = React.useState<Snapshot[]>([]);
   const [apiServices, setApiServices] = React.useState<Map<string, string[]>>(new Map());
   const [openConns, setOpenConns] = React.useState(0);
-  const [routeNames, setRouteNames] = React.useState<Set<string>>(new Set());
+  // Traefik names services of IngressRoutes "<namespace>-<name>-<hash>@kubernetescrd".
+  const [routesByService, setRoutesByService] = React.useState<Map<string, Ref>>(new Map());
   const [error, setError] = React.useState('');
 
   React.useEffect(() => {
     listAllIngressRoutes()
-      .then(irs => setRouteNames(new Set(irs.map(ir => ir.metadata.name))))
-      .catch(() => setRouteNames(new Set()));
+      .then(irs =>
+        setRoutesByService(
+          new Map(
+            irs.map(({ metadata: { namespace, name } }) => [
+              `${namespace}-${name}`,
+              { namespace, name, label: '' },
+            ])
+          )
+        )
+      )
+      .catch(() => setRoutesByService(new Map()));
   }, []);
   const pods = instances[instance];
 
@@ -48,11 +57,16 @@ export default function Overview() {
     let stop = false;
     const tick = async () => {
       try {
-        const [texts, svcs] = await Promise.all([
-          Promise.all(pods.map(fetchMetricsText)),
-          fetchTraefikServices(pods[0]),
+        const [results, svcs] = await Promise.all([
+          Promise.allSettled(pods.map(fetchMetricsText)),
+          fetchTraefikServices(pods[0]).catch(() => [] as TraefikApiService[]),
         ]);
         if (stop) return;
+        const texts = results.flatMap(r => (r.status === 'fulfilled' ? [r.value] : []));
+        if (!texts.length) {
+          const failed = results.find(r => r.status === 'rejected') as PromiseRejectedResult;
+          throw failed.reason;
+        }
         const snap = parseMetrics(texts, Date.now());
         setHistory(h => [...h.filter(s => snap.t - s.t <= WINDOW_MS), snap]);
         setOpenConns(snap.openConnections);
@@ -125,14 +139,9 @@ export default function Overview() {
           {
             label: 'Service',
             getter: (r: any) => {
-              const irName = r.label.startsWith(`${NAMESPACE}-`)
-                ? r.label.slice(NAMESPACE.length + 1)
-                : '';
-              return routeNames.has(irName) ? (
-                <RefLink
-                  r={{ name: irName, namespace: NAMESPACE, label: r.label }}
-                  crd="ingressroutes.traefik.io"
-                />
+              const ir = routesByService.get(r.label);
+              return ir ? (
+                <RefLink r={{ ...ir, label: r.label }} crd="ingressroutes.traefik.io" />
               ) : (
                 r.label
               );

@@ -1,8 +1,8 @@
 import { SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, FormControlLabel, Switch, TextField, Typography } from '@mui/material';
 import React from 'react';
-import { IngressRoute, listIngressRoutes } from './api';
-import { Ref, RefLink, ServiceRef } from './refs';
+import { IngressRoute, listAllIngressRoutes, routesForInstance } from './api';
+import { Ref, RefLink, ServiceRef, serviceRef } from './refs';
 import { pathMatches } from './ruleUtils';
 import RuleView from './RuleView';
 import { InstanceSelect, useInstances } from './useInstance';
@@ -29,31 +29,28 @@ function toFlows(irs: IngressRoute[]): Flow[] {
         namespace: m.namespace ?? ns,
         label: m.name,
       })),
-      services: (r.services ?? []).map(s => ({
-        name: s.name,
-        namespace: s.namespace ?? ns,
-        kind: s.kind,
-        label: `${s.namespace ? s.namespace + '/' : ''}${s.name}${s.port ? ':' + s.port : ''}`,
-      })),
+      services: (r.services ?? []).map(s => serviceRef(s, ns)),
     }));
   });
 }
 
 export default function Configuration() {
   const { instances, instance, setInstance, error: instErr } = useInstances();
-  const [routes, setRoutes] = React.useState<IngressRoute[]>([]);
+  const [allRoutes, setAllRoutes] = React.useState<IngressRoute[]>([]);
   const [filter, setFilter] = React.useState('');
   const [pathQuery, setPathQuery] = React.useState('');
   const [pretty, setPretty] = React.useState(true);
   const [error, setError] = React.useState('');
 
   React.useEffect(() => {
-    if (!instance) return;
-    setError('');
-    listIngressRoutes(instance)
-      .then(setRoutes)
+    listAllIngressRoutes()
+      .then(setAllRoutes)
       .catch(e => setError(String(e?.message ?? e)));
-  }, [instance]);
+  }, []);
+  const routes = React.useMemo(
+    () => (instance ? routesForInstance(allRoutes, instance) : allRoutes),
+    [allRoutes, instance]
+  );
 
   const flows = React.useMemo(() => {
     const q = filter.toLowerCase();
@@ -76,7 +73,7 @@ export default function Configuration() {
         <TextField
           size="small"
           style={{ flex: 1 }}
-          placeholder="Search by path: substring or concrete path, e.g. /loyalty/v2/summary"
+          placeholder="Search by path: substring or concrete path, e.g. /api/v1/users/42"
           value={pathQuery}
           onChange={e => setPathQuery(e.target.value)}
         />
@@ -97,7 +94,12 @@ export default function Configuration() {
         columns={[
           {
             label: 'IngressRoute',
-            getter: (f: Flow) => <RefLink r={f.route} crd="ingressroutes.traefik.io" />,
+            getter: (f: Flow) => (
+              <RefLink
+                r={{ ...f.route, label: `${f.route.namespace}/${f.route.name}` }}
+                crd="ingressroutes.traefik.io"
+              />
+            ),
           },
           {
             label: 'Rule',
@@ -109,7 +111,7 @@ export default function Configuration() {
             label: 'Middlewares',
             getter: (f: Flow) =>
               f.middlewares.map(m => (
-                <RefLink key={m.name} r={m} crd="middlewares.traefik.io" chip />
+                <RefLink key={`${m.namespace}/${m.name}`} r={m} crd="middlewares.traefik.io" chip />
               )),
           },
           {

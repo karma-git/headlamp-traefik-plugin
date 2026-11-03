@@ -1,11 +1,10 @@
 import { SectionBox, SimpleTable } from '@kinvolk/headlamp-plugin/lib/CommonComponents';
 import { Box, TextField, Typography } from '@mui/material';
 import React from 'react';
-import { listTraefikObjects, NAMESPACE } from './api';
+import { ingressClass, listTraefikObjects, routesForInstance } from './api';
 import { RefLink } from './refs';
 import { InstanceSelect, useInstances } from './useInstance';
 
-const ingressClass = (o: any) => o.metadata.annotations?.['kubernetes.io/ingress.class'] ?? '';
 const specType = (o: any) => Object.keys(o.spec ?? {})[0] ?? '-';
 
 function ListPage(props: {
@@ -26,10 +25,13 @@ function ListPage(props: {
   }, [props.plural]);
 
   const q = filter.toLowerCase();
-  const rows = items
-    .filter(o => !props.byInstance || !instance || ingressClass(o) === instance)
-    .filter(o => !q || o.metadata.name.toLowerCase().includes(q))
-    .sort((a, b) => a.metadata.name.localeCompare(b.metadata.name));
+  const rows = (props.byInstance && instance ? routesForInstance(items, instance) : items)
+    .filter(o => !q || `${o.metadata.namespace}/${o.metadata.name}`.toLowerCase().includes(q))
+    .sort(
+      (a, b) =>
+        a.metadata.namespace.localeCompare(b.metadata.namespace) ||
+        a.metadata.name.localeCompare(b.metadata.name)
+    );
 
   return (
     <SectionBox
@@ -52,7 +54,7 @@ function ListPage(props: {
         <TextField
           fullWidth
           size="small"
-          placeholder="Filter by name…"
+          placeholder="Filter by namespace/name…"
           value={filter}
           onChange={e => setFilter(e.target.value)}
         />
@@ -64,11 +66,16 @@ function ListPage(props: {
             label: 'Name',
             getter: (o: any) => (
               <RefLink
-                r={{ name: o.metadata.name, namespace: NAMESPACE, label: o.metadata.name }}
+                r={{
+                  name: o.metadata.name,
+                  namespace: o.metadata.namespace,
+                  label: o.metadata.name,
+                }}
                 crd={`${props.plural}.traefik.io`}
               />
             ),
           },
+          { label: 'Namespace', getter: (o: any) => o.metadata.namespace },
           ...props.columns,
         ]}
       />

@@ -1,8 +1,16 @@
-import { registerRoute, registerSidebarEntry } from '@kinvolk/headlamp-plugin/lib';
+import {
+  registerPluginSettings,
+  registerRoute,
+  registerSidebarEntry,
+} from '@kinvolk/headlamp-plugin/lib';
+import { PLUGIN_NAME } from './config';
 import Configuration from './Configuration';
 import { IngressRoutePage, MiddlewarePage, TraefikServicePage } from './Details';
 import { IngressRoutesList, MiddlewaresList, TraefikServicesList } from './List';
 import Overview from './Overview';
+import Settings from './Settings';
+
+registerPluginSettings(PLUGIN_NAME, Settings, true);
 
 registerSidebarEntry({
   parent: null,
