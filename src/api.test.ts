@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { routesForInstance } from './api';
+import { groupInstances, podsUrl, routesForInstance } from './api';
 import { withDefaults } from './config';
 
 vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
@@ -13,7 +13,6 @@ vi.mock('@kinvolk/headlamp-plugin/lib', () => ({
     }
   },
 }));
-
 
 const ir = (name: string, cls?: string) => ({
   metadata: {
@@ -37,7 +36,7 @@ describe('routesForInstance', () => {
 describe('withDefaults', () => {
   it('fills Helm chart defaults', () => {
     expect(withDefaults(undefined)).toEqual({
-      namespace: 'traefik',
+      namespace: '',
       metricsPort: 9100,
       apiPort: 8080,
     });
@@ -47,6 +46,36 @@ describe('withDefaults', () => {
       namespace: 'ingress',
       metricsPort: 8090,
       apiPort: 8080,
+    });
+  });
+});
+
+describe('podsUrl', () => {
+  it('searches all namespaces when none is configured', () => {
+    expect(podsUrl('')).toBe('/api/v1/pods?labelSelector=app.kubernetes.io%2Fname%3Dtraefik');
+  });
+  it('scopes to the configured namespace', () => {
+    expect(podsUrl('ingress')).toBe(
+      '/api/v1/namespaces/ingress/pods?labelSelector=app.kubernetes.io%2Fname%3Dtraefik'
+    );
+  });
+});
+
+describe('groupInstances', () => {
+  const pod = (name: string, namespace: string, inst: string, phase = 'Running') => ({
+    metadata: { name, namespace, labels: { 'app.kubernetes.io/instance': inst } },
+    status: { phase },
+  });
+  it('keeps the pod namespace and skips non-running pods', () => {
+    expect(
+      groupInstances([
+        pod('a', 'razer-ingress', 'traefik-razer'),
+        pod('b', 'razer-ingress', 'traefik-razer', 'Pending'),
+        pod('c', 'edge', 'edge'),
+      ])
+    ).toEqual({
+      'traefik-razer': [{ namespace: 'razer-ingress', name: 'a' }],
+      edge: [{ namespace: 'edge', name: 'c' }],
     });
   });
 });

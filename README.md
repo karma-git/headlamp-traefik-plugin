@@ -16,19 +16,19 @@ A [Headlamp](https://headlamp.dev) plugin for [Traefik](https://traefik.io) runn
 
 - Traefik v2.10+ or v3 with the `traefik.io` CRDs.
 - The Prometheus metrics entrypoint enabled (`metrics.prometheus`), and the Traefik API (`api`) reachable on a pod port, for the Overview page. The Configuration and list pages only need the CRDs.
-- RBAC for the Headlamp user: `get`/`list` on `pods` in the Traefik namespace, `get` on `pods/proxy` there, and `get`/`list` on `ingressroutes`, `middlewares` and `traefikservices` in group `traefik.io`.
+- RBAC for the Headlamp user: `get`/`list` on `pods` cluster-wide (or only in the Traefik namespace, if it is set in Settings), `get` on `pods/proxy` in the Traefik namespace, and `get`/`list` on `ingressroutes`, `middlewares` and `traefikservices` in group `traefik.io`.
 
 ## Configuration
 
 Settings → Plugins → headlamp-traefik-plugin:
 
-| Setting           | Default   | Meaning                                                    |
-| ----------------- | --------- | ---------------------------------------------------------- |
-| Traefik namespace | `traefik` | Namespace of the Traefik pods                              |
-| Metrics port      | `9100`    | Container port of the Prometheus metrics entrypoint        |
-| API port          | `8080`    | Container port serving the Traefik API (`/api/http/...`)   |
+| Setting           | Default        | Meaning                                                         |
+| ----------------- | -------------- | --------------------------------------------------------------- |
+| Traefik namespace | all namespaces | Namespace of the Traefik pods; empty searches the whole cluster |
+| Metrics port      | `9100`         | Container port of the Prometheus metrics entrypoint             |
+| API port          | `8080`         | Container port serving the Traefik API (`/api/http/...`)        |
 
-The defaults match the official Traefik Helm chart.
+The port defaults match the official Traefik Helm chart.
 
 ## Install
 

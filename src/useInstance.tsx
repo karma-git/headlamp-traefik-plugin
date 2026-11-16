@@ -1,10 +1,10 @@
 import { MenuItem, Select } from '@mui/material';
 import React from 'react';
-import { listInstances } from './api';
+import { listInstances, PodRef } from './api';
 import { useConfig } from './config';
 
 export function useInstances() {
-  const [instances, setInstances] = React.useState<Record<string, string[]>>({});
+  const [instances, setInstances] = React.useState<Record<string, PodRef[]>>({});
   const [instance, setInstance] = React.useState<string>('');
   const [error, setError] = React.useState<string>('');
   const { namespace } = useConfig();
@@ -16,8 +16,9 @@ export function useInstances() {
         setInstance(cur => (res[cur] ? cur : Object.keys(res).sort()[0] ?? ''));
         if (!Object.keys(res).length) {
           setError(
-            `No running Traefik pods (app.kubernetes.io/name=traefik) in namespace "${namespace}". ` +
-              'Set the namespace in Settings → Plugins → headlamp-traefik-plugin.'
+            'No running Traefik pods (app.kubernetes.io/name=traefik) ' +
+              (namespace ? `in namespace "${namespace}". ` : 'in any namespace. ') +
+              'Check the namespace in Settings → Plugins → headlamp-traefik-plugin.'
           );
         }
       })
@@ -27,7 +28,7 @@ export function useInstances() {
 }
 
 export function InstanceSelect(props: {
-  instances: Record<string, string[]>;
+  instances: Record<string, PodRef[]>;
   value: string;
   onChange: (v: string) => void;
 }) {

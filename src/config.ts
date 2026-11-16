@@ -8,9 +8,9 @@ export interface TraefikConfig {
   apiPort: number;
 }
 
-// Defaults of the official Traefik Helm chart.
+// Ports are defaults of the official Traefik Helm chart; an empty namespace means all namespaces.
 export const DEFAULTS: TraefikConfig = {
-  namespace: 'traefik',
+  namespace: '',
   metricsPort: 9100,
   apiPort: 8080,
 };

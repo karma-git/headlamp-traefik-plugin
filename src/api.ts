@@ -36,27 +36,40 @@ export interface TraefikApiService {
 }
 
 export interface Pod {
-  metadata: { name: string; labels?: Record<string, string> };
+  metadata: { name: string; namespace: string; labels?: Record<string, string> };
   status?: { phase?: string };
 }
 
-const podProxy = (pod: string, port: number, path: string) =>
-  `/api/v1/namespaces/${getConfig().namespace}/pods/${pod}:${port}/proxy${path}`;
+export interface PodRef {
+  namespace: string;
+  name: string;
+}
 
-export async function listInstances(): Promise<Record<string, string[]>> {
-  const res = await ApiProxy.request(
-    `/api/v1/namespaces/${getConfig().namespace}/pods?labelSelector=${encodeURIComponent(
-      'app.kubernetes.io/name=traefik'
-    )}`
-  );
-  const out: Record<string, string[]> = {};
-  for (const p of (res.items ?? []) as Pod[]) {
+export const TRAEFIK_POD_SELECTOR = 'app.kubernetes.io/name=traefik';
+
+const podProxy = (pod: PodRef, port: number, path: string) =>
+  `/api/v1/namespaces/${pod.namespace}/pods/${pod.name}:${port}/proxy${path}`;
+
+// Without a configured namespace, Traefik pods are discovered across the whole cluster.
+export const podsUrl = (namespace: string) =>
+  `/api/v1${namespace ? `/namespaces/${namespace}` : ''}/pods?labelSelector=${encodeURIComponent(
+    TRAEFIK_POD_SELECTOR
+  )}`;
+
+export function groupInstances(pods: Pod[]): Record<string, PodRef[]> {
+  const out: Record<string, PodRef[]> = {};
+  for (const p of pods) {
     const inst = p.metadata.labels?.['app.kubernetes.io/instance'];
     if (inst && p.status?.phase === 'Running') {
-      (out[inst] ??= []).push(p.metadata.name);
+      (out[inst] ??= []).push({ namespace: p.metadata.namespace, name: p.metadata.name });
     }
   }
   return out;
+}
+
+export async function listInstances(): Promise<Record<string, PodRef[]>> {
+  const res = await ApiProxy.request(podsUrl(getConfig().namespace));
+  return groupInstances((res.items ?? []) as Pod[]);
 }
 
 export const ingressClass = (o: { metadata: { annotations?: Record<string, string> } }) =>
@@ -70,14 +83,14 @@ export function routesForInstance<T extends IngressRoute>(irs: T[], instance: st
   return irs.filter(ir => ingressClass(ir) === (filtered ? instance : ''));
 }
 
-export async function fetchMetricsText(pod: string): Promise<string> {
+export async function fetchMetricsText(pod: PodRef): Promise<string> {
   const res = await ApiProxy.request(podProxy(pod, getConfig().metricsPort, '/metrics'), {
     isJSON: false,
   });
   return res.text();
 }
 
-export async function fetchTraefikServices(pod: string): Promise<TraefikApiService[]> {
+export async function fetchTraefikServices(pod: PodRef): Promise<TraefikApiService[]> {
   return ApiProxy.request(podProxy(pod, getConfig().apiPort, '/api/http/services?per_page=1000'));
 }
 
