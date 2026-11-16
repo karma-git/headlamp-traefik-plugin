@@ -17,8 +17,8 @@ export default function Settings(props: {
     <Box display="flex" flexDirection="column" gap={2} maxWidth={420}>
       <TextField
         label="Traefik namespace"
-        helperText="Namespace of the Traefik pods (label app.kubernetes.io/name=traefik)"
-        placeholder={DEFAULTS.namespace}
+        helperText="Namespace of the Traefik pods (label app.kubernetes.io/name=traefik). Leave empty to search all namespaces."
+        placeholder="all namespaces"
         value={data?.namespace ?? ''}
         onChange={e => set('namespace', e.target.value)}
       />
